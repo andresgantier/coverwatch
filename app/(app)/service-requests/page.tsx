@@ -37,6 +37,7 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/service-
   const sla = param(sp.sla);
   const billable = param(sp.billable);
   const technician = param(sp.technician);
+  const period = param(sp.period);
 
   const supabase = await createClient();
   let query = supabase.from("v_service_requests").select("*").order("reported_at", { ascending: false }).limit(500);
@@ -45,6 +46,9 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/service-
   if (priority in TICKET_PRIORITIES) query = query.eq("priority", priority as TicketPriority);
   if (sla in SLA_STATUSES) query = query.eq("sla_status", sla as SlaStatus);
   if (billable === "yes") query = query.eq("is_billable", true);
+  if (period === "90d" || period === "12m") {
+    query = query.gte("reported_at", daysAgoIso(period === "90d" ? 90 : 365));
+  }
   if (technician === "none") query = query.is("assigned_technician_id", null);
   else if (/^[0-9a-f-]{36}$/i.test(technician)) query = query.eq("assigned_technician_id", technician);
 
@@ -57,8 +61,11 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/service-
   if (error) throw new Error(error.message);
 
   const withSla = tickets.filter((t) => t.sla_status === "MET" || t.sla_status === "BREACHED");
-  const metPct = withSla.length ? Math.round((100 * withSla.filter((t) => t.sla_status === "MET").length) / withSla.length) : null;
-  const filtered = Boolean(q || status !== "OPEN" || priority || sla || billable || technician);
+  // One decimal, rounded like the dashboard KPI.
+  const metPct = withSla.length
+    ? Math.round((1000 * withSla.filter((t) => t.sla_status === "MET").length) / withSla.length) / 10
+    : null;
+  const filtered = Boolean(q || status !== "OPEN" || priority || sla || billable || technician || period);
 
   return (
     <div className="space-y-4">
@@ -73,6 +80,8 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/service-
             options={[{ value: "", label: "Any SLA status" }, ...options(SLA_STATUSES)]} />
           <FilterSelect name="billable" label="Billable" value={billable}
             options={[{ value: "", label: "Covered and billable" }, { value: "yes", label: "Billable only (no contract)" }]} />
+          <FilterSelect name="period" label="Reported" value={period}
+            options={[{ value: "", label: "Any time" }, { value: "90d", label: "Last 90 days" }, { value: "12m", label: "Last 12 months" }]} />
           <FilterSelect name="technician" label="Technician" value={technician}
             options={[{ value: "", label: "All technicians" }, { value: "none", label: "Not assigned" }, ...technicians]} />
         </FilterBar>
@@ -135,4 +144,9 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/service-
       </div>
     </div>
   );
+}
+
+// Same window as the dashboard KPIs (now − n days).
+function daysAgoIso(days: number) {
+  return new Date(Date.now() - days * 86_400_000).toISOString();
 }

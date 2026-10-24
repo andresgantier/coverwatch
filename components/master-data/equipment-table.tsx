@@ -13,8 +13,8 @@ type EquipmentRow = Database["public"]["Views"]["v_equipment"]["Row"];
 // Equipment table shared by the equipment list and the customer page.
 // Edit dialogs take their site list from <SiteOptionsProvider> higher up.
 export function EquipmentTable({
-  rows, canEdit, showCustomer = true,
-}: { rows: EquipmentRow[]; canEdit: boolean; showCustomer?: boolean }) {
+  rows, canEdit, showCustomer = true, availability,
+}: { rows: EquipmentRow[]; canEdit: boolean; showCustomer?: boolean; availability?: Map<string, number> }) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -25,6 +25,7 @@ export function EquipmentTable({
             <TableHead>{showCustomer ? "Customer / site" : "Site"}</TableHead>
             <TableHead>Coverage</TableHead>
             <TableHead className="hidden lg:table-cell">Warranty</TableHead>
+            {availability && <TableHead className="text-right">Availability 90 d</TableHead>}
             {canEdit && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>
@@ -58,6 +59,11 @@ export function EquipmentTable({
                   </span>
                 ) : "–"}
               </TableCell>
+              {availability && (
+                <TableCell className="text-right tabular-nums">
+                  {availability.has(e.id!) ? <AvailabilityValue value={availability.get(e.id!)!} /> : "–"}
+                </TableCell>
+              )}
               {canEdit && (
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
@@ -105,5 +111,15 @@ export function EquipmentTable({
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+// Below 95 % is flagged with an icon and text, not color alone.
+function AvailabilityValue({ value }: { value: number }) {
+  const low = value < 0.95;
+  return (
+    <span className={low ? "font-medium text-red-700 dark:text-red-400" : undefined}>
+      {(value * 100).toFixed(1)} %{low && " · low"}
+    </span>
   );
 }
