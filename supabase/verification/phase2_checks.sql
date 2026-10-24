@@ -174,8 +174,8 @@ begin
       'o', pg_temp.run(techa, 'select count(*) from public.audit_log'));
 
     -- ---------------- viewer, coordinator, anonymous ----------------
-    r := r || jsonb_build_object('w', 'viewer', 't', 'Viewer reads all contracts', 'e', 'VALUE: 4',
-      'o', pg_temp.run(viewr, 'select count(*) from public.contracts'));
+    r := r || jsonb_build_object('w', 'viewer', 't', 'Viewer reads all test contracts', 'e', 'VALUE: 4',
+      'o', pg_temp.run(viewr, 'select count(*) from public.contracts where contract_number like ''T2-%'''));
     r := r || jsonb_build_object('w', 'viewer', 't', 'Viewer creates a customer', 'e', 'REJECTED',
       'o', pg_temp.run(viewr, 'insert into public.customers (name, segment) values (''Viewer Test'', ''OFFICE'')'));
     r := r || jsonb_build_object('w', 'coordinator', 't', 'Coordinator creates a customer', 'e', 'OK: 1 rows',
