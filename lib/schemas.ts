@@ -131,3 +131,19 @@ export const ticketProgressSchema = z
     resolution_notes: v.resolution_notes,
     status: (v.resolved_at ? "RESOLVED" : "OPEN") as "RESOLVED" | "OPEN",
   }));
+
+export const visitPlanSchema = z.object({
+  assigned_technician_id: optionalUuid,
+  scheduled_date: optionalDate,
+});
+
+export const visitOutcomeSchema = z
+  .object({
+    actual_date: isoDate("Visit date"),
+    result: z.enum(["OK", "ISSUES_FOUND", "FOLLOW_UP_REQUIRED"], { error: "Choose the result." }),
+    observations: optionalText,
+  })
+  .refine((v) => v.result === "OK" || v.observations, {
+    path: ["observations"],
+    message: "Describe what was found.",
+  });

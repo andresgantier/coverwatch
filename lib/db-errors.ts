@@ -32,6 +32,7 @@ const CONSTRAINT_MESSAGES: Record<string, { field?: string; message: string }> =
   service_requests_failure_chk: { field: "failure_end", message: "The failure cannot end before it started." },
   service_requests_status_chk: { field: "resolved_at", message: "A resolved ticket needs a resolution time (and only then)." },
   service_requests_description_check: { field: "description", message: "Description is required." },
+  preventive_visits_done_chk: { field: "actual_date", message: "A completed visit needs a date and a result." },
 };
 
 export function dbErrorToFormState(error: PostgrestError): FormState {
