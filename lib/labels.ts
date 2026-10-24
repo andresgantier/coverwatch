@@ -85,3 +85,49 @@ export function relativeDays(days: number | null | undefined) {
   if (days === 0) return "today";
   return days > 0 ? `in ${days} days` : `${-days} days ago`;
 }
+
+export const TICKET_PRIORITIES = {
+  P1: "P1 · Urgent",
+  P2: "P2 · High",
+  P3: "P3 · Normal",
+} as const;
+export type TicketPriority = keyof typeof TICKET_PRIORITIES;
+
+export const TICKET_STATUSES = {
+  OPEN: "Open",
+  RESOLVED: "Resolved",
+  CANCELLED: "Cancelled",
+} as const;
+export type TicketStatus = keyof typeof TICKET_STATUSES;
+
+// Calculated by the database (v_service_requests.sla_status).
+export const SLA_STATUSES = {
+  MET: "SLA met",
+  BREACHED: "SLA breached",
+  PENDING: "Within SLA",
+  NO_SLA: "No contract",
+} as const;
+export type SlaStatus = keyof typeof SLA_STATUSES;
+
+const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin",
+});
+export const formatDateTime = (v: string | null | undefined) => (v ? dateTimeFormat.format(new Date(v)) : "–");
+
+// timestamptz -> value for <input type="datetime-local"> in Berlin time ("2026-10-24T09:30").
+const localParts = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+export function toBerlinInput(v: string | null | undefined) {
+  if (!v) return "";
+  const p = Object.fromEntries(localParts.formatToParts(new Date(v)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+// Hours as "25 min", "3.5 h" or "2 d 4 h".
+export function formatHours(h: number | null | undefined) {
+  if (h == null) return "–";
+  if (h < 1) return `${Math.round(h * 60)} min`;
+  if (h < 48) return `${Math.round(h * 10) / 10} h`;
+  return `${Math.floor(h / 24)} d ${Math.round(h % 24)} h`;
+}

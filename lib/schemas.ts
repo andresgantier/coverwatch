@@ -82,3 +82,52 @@ export const terminationSchema = z.object({
   terminated_on: isoDate("Termination date"),
   reason: requiredText("Reason").max(500),
 });
+
+// <input type="datetime-local"> value, read as Berlin time by PostgreSQL ("2026-10-24 09:30 Europe/Berlin").
+const berlinDateTime = (label: string) =>
+  z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, `${label}: enter a date and time.`)
+    .transform((v) => `${v.replace("T", " ")} Europe/Berlin`);
+const optionalBerlinDateTime = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+  z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Enter a date and time.").nullable(),
+);
+const toBerlin = (v: string | null) => (v ? `${v.replace("T", " ")} Europe/Berlin` : null);
+const optionalUuid = z.preprocess((v) => (v === "" ? null : v), z.string().uuid().nullable());
+
+export const ticketCreateSchema = z.object({
+  equipment_id: z.string().uuid("Choose the unit."),
+  reported_at: berlinDateTime("Reported at"),
+  reported_by_name: optionalText,
+  priority: z.enum(["P1", "P2", "P3"], { error: "Choose a priority." }),
+  description: requiredText("Description").max(1000),
+  assigned_technician_id: optionalUuid,
+});
+
+export const ticketEditSchema = z.object({
+  priority: z.enum(["P1", "P2", "P3"], { error: "Choose a priority." }),
+  description: requiredText("Description").max(1000),
+  reported_by_name: optionalText,
+  assigned_technician_id: optionalUuid,
+});
+
+// Response, failure and resolution times. Comparisons use the local strings (same format, same zone).
+export const ticketProgressSchema = z
+  .object({
+    first_response_at: optionalBerlinDateTime,
+    failure_start: optionalBerlinDateTime,
+    failure_end: optionalBerlinDateTime,
+    resolved_at: optionalBerlinDateTime,
+    resolution_notes: optionalText,
+  })
+  .refine((v) => !v.failure_end || v.failure_start, { path: ["failure_start"], message: "Enter when the failure started." })
+  .refine((v) => !v.failure_end || !v.failure_start || v.failure_end >= v.failure_start,
+    { path: ["failure_end"], message: "The failure cannot end before it started." })
+  .refine((v) => !v.resolved_at || v.resolution_notes, { path: ["resolution_notes"], message: "Describe what was done." })
+  .transform((v) => ({
+    first_response_at: toBerlin(v.first_response_at),
+    failure_start: toBerlin(v.failure_start),
+    failure_end: toBerlin(v.failure_end),
+    resolved_at: toBerlin(v.resolved_at),
+    resolution_notes: v.resolution_notes,
+    status: (v.resolved_at ? "RESOLVED" : "OPEN") as "RESOLVED" | "OPEN",
+  }));

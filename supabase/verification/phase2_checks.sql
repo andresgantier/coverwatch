@@ -147,6 +147,17 @@ begin
       'o', pg_temp.run('admin', format(
         'select is_billable || '' / '' || sla_status from public.v_service_requests where id = %L', t2)));
 
+    r := r || jsonb_build_object('w', 'coordinator', 't', 'Coordinator removes the coverage of a ticket by hand', 'e', 'OK: 1 rows',
+      'o', pg_temp.run(coord, format('update public.service_requests set covering_contract_id = null, sla_hours = null where id = %L', t1)));
+    r := r || jsonb_build_object('w', 'admin', 't', 'Coverage snapshot is kept anyway', 'e', 'VALUE: T2-K1 / 4',
+      'o', pg_temp.run('admin', format(
+        'select covering_contract_number || '' / '' || sla_hours from public.v_service_requests where id = %L', t1)));
+    r := r || jsonb_build_object('w', 'coordinator', 't', 'Client sends a fake contract on a unit without contract', 'e', 'OK: 1 rows',
+      'o', pg_temp.run(coord, format(
+        'insert into public.service_requests (equipment_id, priority, description, covering_contract_id, sla_hours) values (%L, ''P3'', ''Fake coverage'', %L, 99)', e2, k1)));
+    r := r || jsonb_build_object('w', 'admin', 't', 'Database ignored it: ticket is billable', 'e', 'VALUE: true',
+      'o', pg_temp.run('admin', 'select is_billable from public.v_service_requests where description = ''Fake coverage'''));
+
     -- ---------------- technician: only their own work ----------------
     r := r || jsonb_build_object('w', 'tech A', 't', 'Tech A records first response after 3 h', 'e', 'OK: 1 rows',
       'o', pg_temp.run(techa, format(

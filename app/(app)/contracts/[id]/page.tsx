@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { ArrowLeft, CheckCircle2, FileText, ListChecks, Pencil, RefreshCw, Upload, XCircle } from "lucide-react";
 import { Page } from "@/components/page";
 import { Stat } from "@/components/stat";
+import { AuditHistory } from "@/components/audit-history";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import {
   ContractDialog, EquipmentPickerDialog, PdfUploadDialog, RenewDialog, TerminateDialog, type PickableUnit,
@@ -310,27 +311,7 @@ async function ContractDetail({
         </CardContent>
       </Card>
 
-      {canSeeAudit && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Change history</CardTitle>
-            <CardDescription>Written by a database trigger on every change. Nobody can edit it.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="space-y-3 text-sm">
-              {audit.data!.map((a) => (
-                <li key={a.id} className="border-l-2 pl-3">
-                  <div className="text-muted-foreground">
-                    {formatDateTime(a.changed_at)} · {a.changed_by_name ?? "System"} · {a.action === "INSERT" ? "created" : a.action === "UPDATE" ? "changed" : "deleted"}
-                  </div>
-                  {a.action === "UPDATE" && <div>{describeChanges(a.old_data, a.new_data)}</div>}
-                </li>
-              ))}
-              {audit.data!.length === 0 && <li className="text-muted-foreground">No changes recorded.</li>}
-            </ol>
-          </CardContent>
-        </Card>
-      )}
+      {canSeeAudit && <AuditHistory entries={audit.data!} />}
     </div>
   );
 }
@@ -347,24 +328,6 @@ function buildChain(rows: ChainRow[], id: string): ChainRow[] {
   while (byPrevious.has(chain.at(-1)!.id)) chain.push(byPrevious.get(chain.at(-1)!.id)!);
   return chain;
 }
-
-const HIDDEN_FIELDS = new Set(["activated_at", "updated_at"]);
-
-function describeChanges(oldData: unknown, newData: unknown) {
-  const before = (oldData ?? {}) as Record<string, unknown>;
-  const after = (newData ?? {}) as Record<string, unknown>;
-  const parts = Object.keys(after)
-    .filter((k) => !HIDDEN_FIELDS.has(k))
-    .map((k) => `${k.replace(/_/g, " ")}: ${show(before[k])} → ${show(after[k])}`);
-  return parts.length ? parts.join(" · ") : "activation timestamp updated";
-}
-
-const show = (v: unknown) => (v == null || v === "" ? "–" : String(v));
-
-const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin",
-});
-const formatDateTime = (v: string | null) => (v ? dateTimeFormat.format(new Date(v)) : "–");
 
 function addDays(isoDate: string, n: number) {
   const d = new Date(isoDate + "T12:00:00Z");

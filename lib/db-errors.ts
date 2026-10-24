@@ -27,6 +27,11 @@ const CONSTRAINT_MESSAGES: Record<string, { field?: string; message: string }> =
   contract_equipment_no_overlap: {
     message: "At least one unit is already covered by another contract in this period. Remove it or change the dates.",
   },
+  service_requests_response_chk: { field: "first_response_at", message: "The first response cannot be before the report." },
+  service_requests_resolved_chk: { field: "resolved_at", message: "The resolution cannot be before the report." },
+  service_requests_failure_chk: { field: "failure_end", message: "The failure cannot end before it started." },
+  service_requests_status_chk: { field: "resolved_at", message: "A resolved ticket needs a resolution time (and only then)." },
+  service_requests_description_check: { field: "description", message: "Description is required." },
 };
 
 export function dbErrorToFormState(error: PostgrestError): FormState {

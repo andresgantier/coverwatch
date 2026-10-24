@@ -36,3 +36,24 @@ export async function customerOptions(): Promise<Option[]> {
   if (error) throw new Error(error.message);
   return data.map((c) => ({ value: c.id, label: `${c.name} (${c.customer_number})` }));
 }
+
+// Active technicians as select options.
+export async function technicianOptions(): Promise<Option[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("profiles").select("id, full_name")
+    .eq("role", "technician").eq("is_active", true).order("full_name");
+  if (error) throw new Error(error.message);
+  return data.map((t) => ({ value: t.id, label: t.full_name }));
+}
+
+// Units in service as select options, grouped by customer.
+export async function equipmentOptions(): Promise<Option[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("v_equipment")
+    .select("id, serial_number, manufacturer, model, site_name, customer_name")
+    .eq("status", "ACTIVE").order("customer_name").order("site_name");
+  if (error) throw new Error(error.message);
+  return data.map((e) => ({
+    value: e.id!, label: `${e.manufacturer} ${e.model} · ${e.serial_number} (${e.site_name})`, group: e.customer_name!,
+  }));
+}

@@ -3,13 +3,15 @@ import { connection } from "next/server";
 import { Construction } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { rolesFor } from "@/lib/navigation";
+import type { Role } from "@/lib/roles";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Standard page: static title (part of the instant shell) and a role-checked body
 // that streams in behind <Suspense>. Detail pages leave out the title and render their own.
+// Access follows the menu entry of `href` unless `roles` is given.
 export function Page({
-  href, title, description, children,
-}: { href: string; title?: string; description?: string; children: ReactNode }) {
+  href, title, description, roles, children,
+}: { href: string; title?: string; description?: string; roles?: readonly Role[]; children: ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       {title && (
@@ -19,15 +21,15 @@ export function Page({
         </div>
       )}
       <Suspense fallback={<PageSkeleton />}>
-        <RoleGate href={href}>{children}</RoleGate>
+        <RoleGate roles={roles ?? rolesFor(href)}>{children}</RoleGate>
       </Suspense>
     </div>
   );
 }
 
-async function RoleGate({ href, children }: { href: string; children: ReactNode }) {
+async function RoleGate({ roles, children }: { roles: readonly Role[]; children: ReactNode }) {
   await connection();
-  await requireRole(rolesFor(href));
+  await requireRole(roles);
   return <>{children}</>;
 }
 
