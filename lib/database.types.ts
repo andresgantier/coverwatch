@@ -57,7 +57,7 @@ export type Database = {
         }
         Insert: {
           contract_id: string
-          coverage: unknown
+          coverage?: unknown
           created_at?: string
           equipment_id: string
           is_binding?: boolean

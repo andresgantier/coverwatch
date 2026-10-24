@@ -28,3 +28,11 @@ export async function siteOptions(customerId?: string): Promise<Option[]> {
     .map((s) => ({ value: s.id, label: `${s.name} (${s.city})`, group: s.customer.name }))
     .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
 }
+
+// Active customers as select options.
+export async function customerOptions(): Promise<Option[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("customers").select("id, name, customer_number").eq("is_active", true).order("name");
+  if (error) throw new Error(error.message);
+  return data.map((c) => ({ value: c.id, label: `${c.name} (${c.customer_number})` }));
+}

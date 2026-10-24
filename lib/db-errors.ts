@@ -19,6 +19,14 @@ const CONSTRAINT_MESSAGES: Record<string, { field?: string; message: string }> =
     field: "cooling_capacity_kw",
     message: "Capacity must be greater than 0 and at most 2,000 kW.",
   },
+  contracts_contract_number_key: { field: "contract_number", message: "This contract number is already used." },
+  contracts_dates_chk: { field: "end_date", message: "The contract must end after it starts." },
+  contracts_notice_chk: { field: "notice_period_days", message: "The notice period must be between 0 and 365 days and shorter than the contract." },
+  contracts_sla_chk: { field: "sla_p2_hours", message: "Response times must be P1 ≤ P2 ≤ P3." },
+  contracts_terminated_on_chk: { field: "terminated_on", message: "The termination date must be within the contract period." },
+  contract_equipment_no_overlap: {
+    message: "At least one unit is already covered by another contract in this period. Remove it or change the dates.",
+  },
 };
 
 export function dbErrorToFormState(error: PostgrestError): FormState {

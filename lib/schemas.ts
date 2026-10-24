@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { optionalDate, optionalEmail, optionalText, requiredText } from "@/lib/forms";
-import { EQUIPMENT_TYPES, SEGMENTS, type EquipmentType, type Segment } from "@/lib/labels";
+import {
+  BILLING_FREQUENCIES, CONTRACT_TYPES, EQUIPMENT_TYPES, SEGMENTS,
+  type BillingFrequency, type ContractType, type EquipmentType, type Segment,
+} from "@/lib/labels";
 
 // App-side validation (first line). The database constraints remain the final word.
 
@@ -42,3 +45,40 @@ export const equipmentSchema = z
     path: ["warranty_end_date"],
     message: "The warranty cannot end before the installation date.",
   });
+
+const intField = (label: string, min: number, max: number) =>
+  z.coerce.number({ error: `${label} must be a number.` }).int(`${label} must be a whole number.`)
+    .min(min, `${label} must be at least ${min}.`).max(max, `${label} must be at most ${max}.`);
+const isoDate = (label: string) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, `${label} is required.`);
+
+export const contractSchema = z
+  .object({
+    customer_id: z.string().uuid("Choose a customer."),
+    contract_number: requiredText("Contract number").max(40),
+    contract_type: z.enum(Object.keys(CONTRACT_TYPES) as [ContractType, ...ContractType[]], { error: "Choose a type." }),
+    start_date: isoDate("Start date"),
+    end_date: isoDate("End date"),
+    notice_period_days: intField("Notice period", 0, 365),
+    auto_renew: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+    annual_value_eur: z.coerce.number({ error: "Enter an amount." }).min(0, "The value cannot be negative."),
+    billing_frequency: z.enum(Object.keys(BILLING_FREQUENCIES) as [BillingFrequency, ...BillingFrequency[]]),
+    sla_p1_hours: intField("P1 response time", 1, 720),
+    sla_p2_hours: intField("P2 response time", 1, 720),
+    sla_p3_hours: intField("P3 response time", 1, 720),
+    preventive_visits_per_year: intField("Visits per year", 0, 12),
+    notes: optionalText,
+  })
+  .refine((v) => v.end_date > v.start_date, { path: ["end_date"], message: "The contract must end after it starts." })
+  .refine((v) => v.sla_p1_hours <= v.sla_p2_hours, { path: ["sla_p2_hours"], message: "P2 cannot be faster than P1." })
+  .refine((v) => v.sla_p2_hours <= v.sla_p3_hours, { path: ["sla_p3_hours"], message: "P3 cannot be faster than P2." });
+
+export const renewalSchema = z.object({
+  contract_number: optionalText,
+  annual_value_eur: z.coerce.number({ error: "Enter an amount." }).min(0, "The value cannot be negative."),
+  duration_months: intField("Duration", 1, 60),
+});
+
+export const terminationSchema = z.object({
+  terminated_on: isoDate("Termination date"),
+  reason: requiredText("Reason").max(500),
+});
