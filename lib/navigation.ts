@@ -46,7 +46,10 @@ export const NAV: NavGroup[] = [
   },
   {
     label: "Administration",
-    items: [{ href: "/users", label: "Users", roles: ["manager"] }],
+    items: [
+      { href: "/continuity", label: "Continuity", roles: STAFF },
+      { href: "/users", label: "Users", roles: ["manager"] },
+    ],
   },
 ];
 

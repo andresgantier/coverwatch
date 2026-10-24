@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createCustomer } from "@/app/actions/master-data";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditMasterData, param, searchTerm } from "@/lib/data/master-data";
+import { canEditMasterData } from "@/lib/data/master-data";
+import { listCustomers } from "@/lib/data/lists";
+import { ExportButton } from "@/components/export-button";
 import { SEGMENTS, formatEur, options, type Segment } from "@/lib/labels";
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -27,17 +28,8 @@ export default function CustomersPage({ searchParams }: PageProps<"/customers">)
 async function CustomerList({ searchParams }: { searchParams: PageProps<"/customers">["searchParams"] }) {
   await connection();
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
-  const q = searchTerm(param(sp.q));
-  const segment = param(sp.segment);
-  const status = param(sp.status) || "active";
-
-  const supabase = await createClient();
-  let query = supabase.from("v_customer_summary").select("*").order("name");
-  if (q) query = query.or(`name.ilike.%${q}%,customer_number.ilike.%${q}%`);
-  if (segment in SEGMENTS) query = query.eq("segment", segment as Segment);
-  if (status !== "all") query = query.eq("is_active", status === "active");
-  const { data: customers, error } = await query;
-  if (error) throw new Error(error.message);
+  const { filters, rows: customers } = await listCustomers(sp);
+  const { q, segment, status } = filters;
 
   return (
     <div className="space-y-4">
@@ -49,10 +41,13 @@ async function CustomerList({ searchParams }: { searchParams: PageProps<"/custom
           <FilterSelect name="status" label="Status" value={status}
             options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }, { value: "all", label: "All" }]} />
         </FilterBar>
+        <div className="flex gap-2">
+        <ExportButton list="customers" filters={filters} />
         {canEditMasterData(user.role) && (
           <CustomerDialog title="New customer" action={createCustomer}
             trigger={<Button><Plus className="size-4" aria-hidden /> New customer</Button>} />
         )}
+        </div>
       </div>
 
       <p className="text-sm text-muted-foreground">{customers.length} customers</p>

@@ -9,9 +9,10 @@ import { EquipmentDialog, SiteOptionsProvider } from "@/components/master-data/f
 import { Button } from "@/components/ui/button";
 import { createEquipment } from "@/app/actions/master-data";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditMasterData, param, searchTerm, siteOptions } from "@/lib/data/master-data";
-import { EQUIPMENT_TYPES, options, type EquipmentType } from "@/lib/labels";
-import { createClient } from "@/lib/supabase/server";
+import { canEditMasterData, siteOptions } from "@/lib/data/master-data";
+import { listEquipment } from "@/lib/data/lists";
+import { ExportButton } from "@/components/export-button";
+import { EQUIPMENT_TYPES, options } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Equipment" };
 
@@ -26,24 +27,9 @@ export default function EquipmentPage({ searchParams }: PageProps<"/equipment">)
 async function EquipmentList({ searchParams }: { searchParams: PageProps<"/equipment">["searchParams"] }) {
   await connection();
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
-  const q = searchTerm(param(sp.q));
-  const type = param(sp.type);
-  const coverage = param(sp.coverage);
-  const status = param(sp.status) || "ACTIVE";
-  const customer = param(sp.customer);
-
-  const supabase = await createClient();
-  let query = supabase.from("v_equipment").select("*").order("customer_name").order("site_name").order("serial_number");
-  if (q) query = query.or(`serial_number.ilike.%${q}%,manufacturer.ilike.%${q}%,model.ilike.%${q}%,customer_name.ilike.%${q}%`);
-  if (type in EQUIPMENT_TYPES) query = query.eq("equipment_type", type as EquipmentType);
-  if (coverage === "covered") query = query.eq("is_covered", true);
-  if (coverage === "uncovered") query = query.eq("is_covered", false);
-  if (status === "ACTIVE" || status === "DECOMMISSIONED") query = query.eq("status", status);
-  if (/^[0-9a-f-]{36}$/i.test(customer)) query = query.eq("customer_id", customer);
-
   const canEdit = canEditMasterData(user.role);
-  const [{ data: rows, error }, sites] = await Promise.all([query, canEdit ? siteOptions() : Promise.resolve([])]);
-  if (error) throw new Error(error.message);
+  const [{ filters, rows }, sites] = await Promise.all([listEquipment(sp), canEdit ? siteOptions() : Promise.resolve([])]);
+  const { q, type, coverage, status, customer } = filters;
 
   const filtered = Boolean(q || type || coverage || status !== "ACTIVE" || customer);
 
@@ -61,10 +47,13 @@ async function EquipmentList({ searchParams }: { searchParams: PageProps<"/equip
               options={[{ value: "ACTIVE", label: "In service" }, { value: "DECOMMISSIONED", label: "Decommissioned" }, { value: "all", label: "All" }]} />
             {customer && <input type="hidden" name="customer" value={customer} />}
           </FilterBar>
-          {canEdit && (
-            <EquipmentDialog title="Add equipment" action={createEquipment}
-              trigger={<Button><Plus className="size-4" aria-hidden /> Add equipment</Button>} />
-          )}
+          <div className="flex gap-2">
+            <ExportButton list="equipment" filters={filters} />
+            {canEdit && (
+              <EquipmentDialog title="Add equipment" action={createEquipment}
+                trigger={<Button><Plus className="size-4" aria-hidden /> Add equipment</Button>} />
+            )}
+          </div>
         </div>
 
         <p className="text-sm text-muted-foreground">

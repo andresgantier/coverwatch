@@ -1,0 +1,136 @@
+# Nightly backup of the CoverWatch database, with a restore drill.
+# Lives in the PRIVATE repository coverwatch-backups (source: coverwatch/ops/backup-repo).
+#
+# 1. Dumps roles, schema and data with the Supabase CLI into backups/<date>/
+# 2. Restores schema + data into an empty PostgreSQL 17 (service container)
+# 3. Compares the row count of every public table with the live database
+# 4. Writes backups/<date>/restore-report.md and commits everything; keeps 30 days
+#
+# Secret required: SUPABASE_DB_URL (Session pooler connection string, with password).
+
+name: Nightly backup
+
+on:
+  schedule:
+    - cron: "30 2 * * *" # 02:30 UTC every day
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: [".github/workflows/**", "restore/**"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      restore-db:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      RESTORE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Check the secret is set
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Secret SUPABASE_DB_URL is missing (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Dump the database
+        run: |
+          DIR="backups/$(date -u +%Y-%m-%d)"
+          mkdir -p "$DIR"
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only -f "$DIR/roles.sql"
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f "$DIR/schema.sql"
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only --use-copy -f "$DIR/data.sql"
+          ls -lh "$DIR"
+          echo "DIR=$DIR" >> "$GITHUB_ENV"
+
+      - name: Install the PostgreSQL 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Restore drill
+        id: restore
+        run: |
+          # Stand-ins for Supabase platform objects, then schema and data from tonight's dump.
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -q -f restore/prelude.sql
+          psql "$RESTORE_URL" -q -f "$DIR/schema.sql" > schema.log 2>&1 || true
+          psql "$RESTORE_URL" -q -c "set session_replication_role = replica" -f "$DIR/data.sql" > data.log 2>&1 || true
+          grep -c "ERROR" schema.log > schema_errors.txt || true
+          grep -c "ERROR" data.log > data_errors.txt || true
+          # Row counts of every public table: live vs restored.
+          psql "$SUPABASE_DB_URL" -At -F '|' -f restore/count_rows.sql > live_counts.txt
+          psql "$RESTORE_URL" -At -F '|' -f restore/count_rows.sql > restored_counts.txt
+          if diff live_counts.txt restored_counts.txt > counts.diff; then echo "result=PASS" >> "$GITHUB_OUTPUT"; else echo "result=FAIL" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Write the restore report
+        if: always()
+        run: |
+          REPORT="$DIR/restore-report.md"
+          {
+            echo "# Restore drill $(date -u +'%Y-%m-%d %H:%M UTC')"
+            echo
+            echo "**Result: ${{ steps.restore.outputs.result || 'NOT RUN' }}** (row counts of every public table, live vs restored)"
+            echo
+            echo "| Table | Live | Restored |"
+            echo "|---|---|---|"
+            join -t '|' -a1 -a2 -e '-' -o 0,1.2,2.2 <(sort live_counts.txt 2>/dev/null) <(sort restored_counts.txt 2>/dev/null) \
+              | awk -F'|' '{ print "| " $1 " | " $2 " | " $3 " |" }'
+            echo
+            echo "Errors while loading (expected only for Supabase-internal objects outside the public schema):"
+            echo "- schema: $(cat schema_errors.txt 2>/dev/null || echo n/a)"
+            echo "- data: $(cat data_errors.txt 2>/dev/null || echo n/a)"
+            echo
+            echo "<details><summary>First errors</summary>"
+            echo
+            echo '```'
+            grep "ERROR" schema.log data.log 2>/dev/null | head -20
+            echo '```'
+            echo "</details>"
+          } > "$REPORT"
+          cat "$REPORT"
+
+      - name: Keep the last 30 days
+        if: always()
+        run: |
+          ls -1d backups/*/ 2>/dev/null | sort | head -n -30 | xargs -r rm -rf
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "coverwatch-backup-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A backups
+          git commit -m "Backup $(date -u +%Y-%m-%d) (restore drill: ${{ steps.restore.outputs.result || 'NOT RUN' }})" || echo "Nothing to commit"
+          git push
+
+      - name: Fail the job if the restore drill failed
+        if: steps.restore.outputs.result != 'PASS'
+        run: |
+          echo "::error::Restore drill did not pass. See the restore report."
+          exit 1

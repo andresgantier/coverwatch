@@ -4,7 +4,8 @@ import { connection } from "next/server";
 import { Page } from "@/components/page";
 import { Badge } from "@/components/ui/badge";
 import { CONTRACT_TYPES, RENEWAL_BUCKETS, formatDate, formatEur, relativeDays, type ContractType, type RenewalBucket } from "@/lib/labels";
-import { createClient } from "@/lib/supabase/server";
+import { listRenewals } from "@/lib/data/lists";
+import { ExportButton } from "@/components/export-button";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Renewals" };
@@ -30,15 +31,14 @@ export default function RenewalsPage() {
 
 async function Pipeline() {
   await connection();
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("v_renewal_pipeline").select("*").order("decision_deadline");
-  if (error) throw new Error(error.message);
+  const { rows: data } = await listRenewals();
 
   const buckets = Object.keys(RENEWAL_BUCKETS) as RenewalBucket[];
   const total = data.reduce((s, r) => s + (r.annual_value_eur ?? 0), 0);
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end"><ExportButton list="renewals" filters={{}} /></div>
       <p className="text-sm text-muted-foreground">
         {data.length} contracts with a decision due in the next 90 days or overdue · {formatEur(total)} annual value at stake
       </p>

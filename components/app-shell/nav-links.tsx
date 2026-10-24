@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell, Building2, CalendarCheck, ClipboardList, FileText, LayoutDashboard, RefreshCw, Users, Wrench, AirVent,
+  Bell, Building2, LifeBuoy, CalendarCheck, ClipboardList, FileText, LayoutDashboard, RefreshCw, Users, Wrench, AirVent,
   type LucideIcon,
 } from "lucide-react";
 import { navFor } from "@/lib/navigation";
@@ -20,6 +20,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/visits": CalendarCheck,
   "/customers": Building2,
   "/equipment": AirVent,
+  "/continuity": LifeBuoy,
   "/users": Users,
 };
 

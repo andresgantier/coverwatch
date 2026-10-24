@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cancelVisit, planVisit, recordVisitOutcome } from "@/app/actions/visits";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditMasterData, param, searchTerm, technicianOptions } from "@/lib/data/master-data";
-import { formatDate, todayBerlin } from "@/lib/labels";
+import { canEditMasterData, technicianOptions } from "@/lib/data/master-data";
+import { listVisits } from "@/lib/data/lists";
+import { ExportButton } from "@/components/export-button";
+import { formatDate } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Preventive visits" };
@@ -39,35 +41,16 @@ export default function VisitsPage({ searchParams }: PageProps<"/visits">) {
 async function VisitPlan({ searchParams }: { searchParams: PageProps<"/visits">["searchParams"] }) {
   await connection();
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
-  const view = param(sp.view) || "open";
-  const technician = param(sp.technician);
-  const q = searchTerm(param(sp.q));
-  const today = todayBerlin();
-  const in30 = addDays(today, 30);
-
-  const supabase = await createClient();
-  let query = supabase.from("v_preventive_visits").select("*").limit(500);
-  if (view === "open" || view === "unassigned" || view === "next30") query = query.eq("status", "PLANNED");
-  if (view === "overdue") query = query.eq("is_overdue", true);
-  if (view === "next30") query = query.gte("planned_date", today).lte("planned_date", in30);
-  if (view === "unassigned") query = query.is("assigned_technician_id", null);
-  if (view === "done") query = query.eq("status", "DONE");
-  if (technician === "none") query = query.is("assigned_technician_id", null);
-  else if (/^[0-9a-f-]{36}$/i.test(technician)) query = query.eq("assigned_technician_id", technician);
-  if (q) query = query.or(`customer_name.ilike.%${q}%,contract_number.ilike.%${q}%`);
-  query = view === "done" || view === "all"
-    ? query.order("planned_date", { ascending: false })
-    : query.order("planned_date");
-
   const canEdit = canEditMasterData(user.role);
-  const [{ data: visits, error }, technicians, kpis, unassignedSoon] = await Promise.all([
-    query,
+  const supabase = await createClient();
+  const [{ filters, rows: visits, today, in30 }, technicians, kpis] = await Promise.all([
+    listVisits(sp),
     technicianOptions(),
     supabase.from("v_dashboard_kpis").select("plan_compliance_pct_12m, overdue_visits").single(),
-    supabase.from("v_preventive_visits").select("id", { count: "exact", head: true })
-      .eq("status", "PLANNED").gte("planned_date", today).lte("planned_date", in30).is("assigned_technician_id", null),
   ]);
-  if (error) throw new Error(error.message);
+  const unassignedSoon = await supabase.from("v_preventive_visits").select("id", { count: "exact", head: true })
+    .eq("status", "PLANNED").gte("planned_date", today).lte("planned_date", in30).is("assigned_technician_id", null);
+  const { view, technician, q } = filters;
 
   return (
     <div className="space-y-4">
@@ -78,12 +61,15 @@ async function VisitPlan({ searchParams }: { searchParams: PageProps<"/visits">[
         <Stat label="Next 30 days without technician" value={unassignedSoon.count ?? 0} className="col-span-2 lg:col-span-1" />
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
       <FilterBar action="/visits" clearHref={view !== "open" || technician || q ? "/visits" : undefined}>
         <SearchInput defaultValue={q} placeholder="Customer or contract" />
         <FilterSelect name="view" label="Visits" value={view} options={VIEWS} />
         <FilterSelect name="technician" label="Technician" value={technician}
           options={[{ value: "", label: "All technicians" }, { value: "none", label: "Not assigned" }, ...technicians]} />
       </FilterBar>
+      <ExportButton list="visits" filters={filters} />
+      </div>
 
       <p className="text-sm text-muted-foreground">{visits.length} visits{visits.length === 500 && " (first 500)"}</p>
 
@@ -146,8 +132,3 @@ async function VisitPlan({ searchParams }: { searchParams: PageProps<"/visits">[
   );
 }
 
-function addDays(isoDate: string, n: number) {
-  const d = new Date(isoDate + "T12:00:00Z");
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}

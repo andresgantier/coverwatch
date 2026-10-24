@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createContract } from "@/app/actions/contracts";
 import { getCurrentUser } from "@/lib/auth";
-import { customerOptions, param, searchTerm } from "@/lib/data/master-data";
+import { customerOptions } from "@/lib/data/master-data";
+import { listContracts } from "@/lib/data/lists";
+import { ExportButton } from "@/components/export-button";
 import {
   CONTRACT_STATUSES, CONTRACT_TYPES, formatDate, formatEur, options, relativeDays, todayBerlin, type ContractType,
 } from "@/lib/labels";
@@ -36,29 +38,13 @@ export default function ContractsPage({ searchParams }: PageProps<"/contracts">)
 async function ContractList({ searchParams }: { searchParams: PageProps<"/contracts">["searchParams"] }) {
   await connection();
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
-  const q = searchTerm(param(sp.q));
-  const status = param(sp.status) || "current";
-  const type = param(sp.type);
-  const customer = param(sp.customer);
-
-  const supabase = await createClient();
-  let query = supabase.from("v_contracts").select("*");
-  if (q) query = query.or(`contract_number.ilike.%${q}%,customer_name.ilike.%${q}%`);
-  if (status === "current") query = query.in("status", ["DRAFT", "ACTIVE"]);
-  else if (status !== "all") query = query.eq("display_status", status);
-  if (type in CONTRACT_TYPES) query = query.eq("contract_type", type as ContractType);
-  if (/^[0-9a-f-]{36}$/i.test(customer)) query = query.eq("customer_id", customer);
-  query = status === "current" || status === "ACTIVE" || status === "EXPIRING_SOON"
-    ? query.order("decision_deadline")
-    : query.order("end_date", { ascending: false });
-
   const isManager = user.role === "manager";
-  const [{ data: contracts, error }, customers, suggestedNumber] = await Promise.all([
-    query,
+  const [{ filters, rows: contracts }, customers, suggestedNumber] = await Promise.all([
+    listContracts(sp),
     isManager ? customerOptions() : Promise.resolve([]),
     isManager ? nextContractNumber() : Promise.resolve(""),
   ]);
-  if (error) throw new Error(error.message);
+  const { q, status, type, customer } = filters;
 
   const today = todayBerlin();
   const total = contracts.filter((c) => c.status === "ACTIVE").reduce((sum, c) => sum + (c.annual_value_eur ?? 0), 0);
@@ -78,6 +64,7 @@ async function ContractList({ searchParams }: { searchParams: PageProps<"/contra
           <Button asChild variant="outline">
             <Link href="/renewals"><RefreshCw className="size-4" aria-hidden /> Renewal pipeline</Link>
           </Button>
+          <ExportButton list="contracts" filters={filters} />
           {isManager && (
             <ContractDialog
               title="New contract (draft)"

@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_error_log: {
+        Row: {
+          details: Json | null
+          digest: string | null
+          id: number
+          message: string
+          occurred_at: string
+          path: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          details?: Json | null
+          digest?: string | null
+          id?: never
+          message: string
+          occurred_at?: string
+          path?: string | null
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          details?: Json | null
+          digest?: string | null
+          id?: never
+          message?: string
+          occurred_at?: string
+          path?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -1213,6 +1246,16 @@ export type Database = {
       }
       expire_contracts: { Args: never; Returns: number }
       health_check: { Args: never; Returns: Json }
+      log_app_error: {
+        Args: {
+          p_details?: Json
+          p_digest?: string
+          p_message: string
+          p_path: string
+          p_source: string
+        }
+        Returns: undefined
+      }
       renew_contract: {
         Args: {
           p_annual_value_eur?: number

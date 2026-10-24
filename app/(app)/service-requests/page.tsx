@@ -10,12 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createTicket } from "@/app/actions/service-requests";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditMasterData, equipmentOptions, param, searchTerm, technicianOptions } from "@/lib/data/master-data";
+import { canEditMasterData, equipmentOptions, technicianOptions } from "@/lib/data/master-data";
+import { TICKET_LIMIT, listTickets } from "@/lib/data/lists";
+import { ExportButton } from "@/components/export-button";
 import {
   SLA_STATUSES, TICKET_PRIORITIES, TICKET_STATUSES, formatDateTime, formatHours, options, toBerlinInput,
-  type SlaStatus, type TicketPriority, type TicketStatus,
 } from "@/lib/labels";
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Service requests" };
 
@@ -31,34 +31,13 @@ export default function ServiceRequestsPage({ searchParams }: PageProps<"/servic
 async function TicketList({ searchParams }: { searchParams: PageProps<"/service-requests">["searchParams"] }) {
   await connection();
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
-  const q = searchTerm(param(sp.q));
-  const status = param(sp.status) || "OPEN";
-  const priority = param(sp.priority);
-  const sla = param(sp.sla);
-  const billable = param(sp.billable);
-  const technician = param(sp.technician);
-  const period = param(sp.period);
-
-  const supabase = await createClient();
-  let query = supabase.from("v_service_requests").select("*").order("reported_at", { ascending: false }).limit(500);
-  if (q) query = query.or(`ticket_number.ilike.%${q}%,customer_name.ilike.%${q}%,serial_number.ilike.%${q}%`);
-  if (status in TICKET_STATUSES) query = query.eq("status", status as TicketStatus);
-  if (priority in TICKET_PRIORITIES) query = query.eq("priority", priority as TicketPriority);
-  if (sla in SLA_STATUSES) query = query.eq("sla_status", sla as SlaStatus);
-  if (billable === "yes") query = query.eq("is_billable", true);
-  if (period === "90d" || period === "12m") {
-    query = query.gte("reported_at", daysAgoIso(period === "90d" ? 90 : 365));
-  }
-  if (technician === "none") query = query.is("assigned_technician_id", null);
-  else if (/^[0-9a-f-]{36}$/i.test(technician)) query = query.eq("assigned_technician_id", technician);
-
   const canEdit = canEditMasterData(user.role);
-  const [{ data: tickets, error }, technicians, equipment] = await Promise.all([
-    query,
+  const [{ filters, rows: tickets }, technicians, equipment] = await Promise.all([
+    listTickets(sp),
     technicianOptions(),
     canEdit ? equipmentOptions() : Promise.resolve([]),
   ]);
-  if (error) throw new Error(error.message);
+  const { q, status, priority, sla, billable, technician, period } = filters;
 
   const withSla = tickets.filter((t) => t.sla_status === "MET" || t.sla_status === "BREACHED");
   // One decimal, rounded like the dashboard KPI.
@@ -85,15 +64,18 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/service-
           <FilterSelect name="technician" label="Technician" value={technician}
             options={[{ value: "", label: "All technicians" }, { value: "none", label: "Not assigned" }, ...technicians]} />
         </FilterBar>
+        <div className="flex gap-2">
+        <ExportButton list="service-requests" filters={filters} />
         {canEdit && (
           <TicketCreateDialog action={createTicket} equipment={equipment} technicians={technicians}
             now={toBerlinInput(new Date().toISOString())}
             trigger={<Button><Plus className="size-4" aria-hidden /> New ticket</Button>} />
         )}
+        </div>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {tickets.length} tickets{tickets.length === 500 && " (latest 500)"}
+        {tickets.length} tickets{tickets.length === TICKET_LIMIT && ` (latest ${TICKET_LIMIT})`}
         {metPct !== null && <> · {metPct} % of answered tickets with a contract met the SLA</>}
         {" · "}{tickets.filter((t) => t.is_billable).length} billable
       </p>
@@ -146,7 +128,3 @@ async function TicketList({ searchParams }: { searchParams: PageProps<"/service-
   );
 }
 
-// Same window as the dashboard KPIs (now − n days).
-function daysAgoIso(days: number) {
-  return new Date(Date.now() - days * 86_400_000).toISOString();
-}
