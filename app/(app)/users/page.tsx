@@ -4,12 +4,14 @@ import { Page } from "@/components/page";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
+import { getCurrentUser } from "@/lib/auth";
+import { UserAccess } from "./user-access";
 
 export const metadata: Metadata = { title: "Users" };
 
 export default function UsersPage() {
   return (
-    <Page href="/users" title="Users" description="Team members and their roles. Roles decide what each person can see and change.">
+    <Page href="/users" title="Users" description="Team members and their roles. Roles decide what each person can see and change; the database enforces them.">
       <UserList />
     </Page>
   );
@@ -17,6 +19,7 @@ export default function UsersPage() {
 
 async function UserList() {
   await connection();
+  const me = await getCurrentUser();
   const supabase = await createClient();
   const { data: users, error } = await supabase
     .from("profiles")
@@ -34,17 +37,23 @@ async function UserList() {
             <th className="px-4 py-2 font-medium">Name</th>
             <th className="px-4 py-2 font-medium">Email</th>
             <th className="px-4 py-2 font-medium">Role</th>
-            <th className="px-4 py-2 font-medium">Status</th>
+            <th className="px-4 py-2 text-right font-medium">Change access</th>
           </tr>
         </thead>
         <tbody>
           {users.map((u) => (
             <tr key={u.id} className="border-t">
-              <td className="px-4 py-2 font-medium">{u.full_name}</td>
+              <td className="px-4 py-2 font-medium">
+                {u.full_name}
+                {u.id === me.id && <Badge variant="outline" className="ml-2">You</Badge>}
+              </td>
               <td className="px-4 py-2 text-muted-foreground">{u.email}</td>
-              <td className="px-4 py-2">{ROLE_LABELS[u.role as Role]}</td>
               <td className="px-4 py-2">
-                <Badge variant={u.is_active ? "secondary" : "outline"}>{u.is_active ? "Active" : "Inactive"}</Badge>
+                {ROLE_LABELS[u.role as Role]}
+                {!u.is_active && <Badge variant="outline" className="ml-2">Inactive</Badge>}
+              </td>
+              <td className="px-4 py-2">
+                <UserAccess id={u.id} name={u.full_name} role={u.role as Role} isActive={u.is_active} />
               </td>
             </tr>
           ))}

@@ -403,7 +403,7 @@ for (const s of staff) {
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
   confirmation_token, recovery_token, email_change_token_new, email_change)
 values ('00000000-0000-0000-0000-000000000000', ${sql(s.id)}, 'authenticated', 'authenticated', ${sql(s.email)}, ${sql(hash)}, now(),
-  '{"provider":"email","providers":["email"],"demo":true}', ${sql(JSON.stringify({ full_name: s.name }))}, now(), now(), '', '', '', '');
+  ${sql(JSON.stringify({ provider: "email", providers: ["email"], demo: true, demo_login: Boolean(s.demo) }))}, ${sql(JSON.stringify({ full_name: s.name }))}, now(), now(), '', '', '', '');
 insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
 values (${sql(s.id)}, ${sql(s.id)}, ${sql(JSON.stringify({ sub: s.id, email: s.email, email_verified: true }))}, 'email', now(), now(), now());
 update public.profiles set role = '${s.role}', phone = ${sql(phone())} where id = ${sql(s.id)};`);

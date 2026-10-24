@@ -6,16 +6,18 @@ import { rolesFor } from "@/lib/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Standard page: static title (part of the instant shell) and a role-checked body
-// that streams in behind <Suspense>.
+// that streams in behind <Suspense>. Detail pages leave out the title and render their own.
 export function Page({
   href, title, description, children,
-}: { href: string; title: string; description?: string; children: ReactNode }) {
+}: { href: string; title?: string; description?: string; children: ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="text-muted-foreground">{description}</p>}
-      </div>
+      {title && (
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          {description && <p className="text-muted-foreground">{description}</p>}
+        </div>
+      )}
       <Suspense fallback={<PageSkeleton />}>
         <RoleGate href={href}>{children}</RoleGate>
       </Suspense>
