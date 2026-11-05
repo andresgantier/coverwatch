@@ -19,11 +19,11 @@ export function MobileNav({ role }: { role: Role }) {
           <Menu className="size-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 bg-sidebar p-0">
-        <SheetHeader className="border-b p-4">
+      <SheetContent side="left" className="w-72 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground">
+        <SheetHeader className="border-b border-sidebar-border p-4">
           <SheetTitle asChild>
             <div>
-              <Logo />
+              <Logo onDark />
             </div>
           </SheetTitle>
         </SheetHeader>

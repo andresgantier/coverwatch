@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Page } from "@/components/page";
-import { KpiTile } from "@/components/kpi-tile";
+import {
+  Activity, AlertTriangle, Bell, CalendarCheck, CalendarX, Euro, FileText, Receipt, RefreshCw, Timer, Wrench,
+} from "lucide-react";
+import { KpiSection, KpiTile } from "@/components/kpi-tile";
+import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth";
 import { RenewalValueChart, SlaTrendChart } from "@/components/charts/charts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RENEWAL_BUCKETS, formatEur, type RenewalBucket } from "@/lib/labels";
@@ -12,8 +17,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default function DashboardPage() {
   return (
-    <Page href="/dashboard" title="Dashboard"
-      description="Portfolio, renewals, service levels and preventive maintenance. Every number is calculated by the database; click a tile to see the list behind it.">
+    <Page href="/dashboard">
       <Dashboard />
     </Page>
   );
@@ -26,7 +30,7 @@ const pct = (v: number | null | undefined) => (v == null ? "–" : `${v} %`);
 
 async function Dashboard() {
   await connection();
-  const supabase = await createClient();
+  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()]);
   const since12m = monthsAgoIso(11);
 
   const [kpiRes, pipelineRes, slaRes, topRes, availRes, alertsRes] = await Promise.all([
@@ -56,39 +60,63 @@ async function Dashboard() {
   const openTickets = (k.open_tickets_p1 ?? 0) + (k.open_tickets_p2 ?? 0) + (k.open_tickets_p3 ?? 0);
 
   return (
-    <div className="space-y-6">
-      <section aria-label="Contracts" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Active contracts" value={k.active_contracts} href="/contracts?status=ACTIVE"
-          hint={`${k.covered_equipment_count} of ${k.equipment_count} units covered today`} />
-        <KpiTile label="Portfolio annual value" value={formatEur(k.portfolio_annual_value_eur)} href="/contracts?status=ACTIVE"
-          hint="Sum of active contracts" />
-        <KpiTile label="Renewals due in 90 days" value={k.renewals_90d_count} href="/renewals"
-          hint={`${formatEur(k.renewals_90d_value_eur)} annual value at stake`} />
-        <KpiTile label="Renewal decisions overdue" value={k.overdue_decisions_count} href="/renewals"
-          attention={k.overdue_decisions_count ? "Decide now" : undefined}
-          hint={`${formatEur(k.overdue_decisions_value_eur)} at stake`} />
+    <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b3431] via-[#0f766e] to-[#14b8a6] p-6 text-white shadow-md md:p-8">
+        <div className="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-white/10" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-20 right-32 size-40 rounded-full bg-white/5" aria-hidden />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-sm text-white/70">{today()} · Velden Klimatechnik GmbH</p>
+            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{greeting()}, {user.fullName.split(" ")[0]}</h1>
+            <p className="max-w-xl text-white/80">
+              {alertCount ? <>{alertCount} things need attention today: {k.overdue_decisions_count} renewal decisions, {k.open_tickets_p1} urgent tickets and {k.overdue_visits} overdue visits.</>
+                : "Nothing needs attention today."}
+            </p>
+          </div>
+          <Button asChild variant="secondary" className="bg-white text-[#0b3431] hover:bg-white/90">
+            <Link href="/alerts"><Bell className="size-4" aria-hidden /> View alerts</Link>
+          </Button>
+        </div>
       </section>
 
-      <section aria-label="Service" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="SLA met (last 90 days)" value={pct(k.sla_met_pct_90d)} href="/service-requests?status=all&period=90d"
-          hint="First response within the contract's time" />
-        <KpiTile label="Open tickets" value={openTickets} href="/service-requests"
-          hint={`P1 ${k.open_tickets_p1} · P2 ${k.open_tickets_p2} · P3 ${k.open_tickets_p3}`}
-          attention={k.open_tickets_p1 ? `${k.open_tickets_p1} urgent` : undefined} />
-        <KpiTile label="Billable tickets (90 days)" value={k.billable_tickets_90d} href="/service-requests?status=all&billable=yes&period=90d"
-          hint="Units without contract: sales opportunity" />
-        <KpiTile label="Equipment availability (90 days)"
-          value={k.availability_90d == null ? "–" : `${(k.availability_90d * 100).toFixed(1)} %`} href="#availability"
-          hint="1 − failure hours / hours in period" />
-      </section>
+      <KpiSection title="Contracts and renewals">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiTile icon={FileText} label="Active contracts" value={k.active_contracts} href="/contracts?status=ACTIVE"
+            hint={`${k.covered_equipment_count} of ${k.equipment_count} units covered today`} />
+          <KpiTile icon={Euro} label="Portfolio annual value" value={formatEur(k.portfolio_annual_value_eur)} href="/contracts?status=ACTIVE"
+            hint="Sum of active contracts" />
+          <KpiTile icon={RefreshCw} label="Renewals due in 90 days" value={k.renewals_90d_count} href="/renewals"
+            hint={`${formatEur(k.renewals_90d_value_eur)} annual value at stake`} />
+          <KpiTile icon={AlertTriangle} label="Renewal decisions overdue" value={k.overdue_decisions_count} href="/renewals"
+            attention={k.overdue_decisions_count ? "Decide now" : undefined}
+            hint={`${formatEur(k.overdue_decisions_value_eur)} at stake`} />
+        </div>
+      </KpiSection>
 
-      <section aria-label="Maintenance" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiTile label="Plan compliance (12 months)" value={pct(k.plan_compliance_pct_12m)} href="/visits?view=done"
-          hint="Visits done within 14 days of their due date" />
-        <KpiTile label="Overdue preventive visits" value={k.overdue_visits} href="/visits?view=overdue"
-          attention={k.overdue_visits ? "Plan them" : undefined} />
-        <KpiTile label="Alerts today" value={alertCount} href="/alerts" hint="Decisions, overdue visits, tickets out of SLA" />
-      </section>
+      <KpiSection title="Service">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiTile icon={Timer} label="SLA met (last 90 days)" value={pct(k.sla_met_pct_90d)} href="/service-requests?status=all&period=90d"
+            hint="First response within the contract's time" />
+          <KpiTile icon={Wrench} label="Open tickets" value={openTickets} href="/service-requests"
+            hint={`P1 ${k.open_tickets_p1} · P2 ${k.open_tickets_p2} · P3 ${k.open_tickets_p3}`}
+            attention={k.open_tickets_p1 ? `${k.open_tickets_p1} urgent` : undefined} />
+          <KpiTile icon={Receipt} label="Billable tickets (90 days)" value={k.billable_tickets_90d} href="/service-requests?status=all&billable=yes&period=90d"
+            hint="Units without contract: sales opportunity" />
+          <KpiTile icon={Activity} label="Equipment availability (90 days)"
+            value={k.availability_90d == null ? "–" : `${(k.availability_90d * 100).toFixed(1)} %`} href="#availability"
+            hint="1 − failure hours / hours in period" />
+        </div>
+      </KpiSection>
+
+      <KpiSection title="Preventive maintenance">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiTile icon={CalendarCheck} label="Plan compliance (12 months)" value={pct(k.plan_compliance_pct_12m)} href="/visits?view=done"
+            hint="Visits done within 14 days of their due date" />
+          <KpiTile icon={CalendarX} label="Overdue preventive visits" value={k.overdue_visits} href="/visits?view=overdue"
+            attention={k.overdue_visits ? "Plan them" : undefined} hint="Planned date passed, not done" />
+          <KpiTile icon={Bell} label="Alerts today" value={alertCount} href="/alerts" hint="Decisions, overdue visits, tickets out of SLA" />
+        </div>
+      </KpiSection>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -202,4 +230,14 @@ function slaByMonth(rows: { reported_at: string | null; sla_status: string | nul
     if (r.sla_status === "MET") m.met++;
   }
   return months.map((m) => ({ month: m.month, met: m.met, total: m.total, pct: m.total ? Math.round((100 * m.met) / m.total) : null }));
+}
+
+// Greeting and date in the company's time zone.
+function greeting() {
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: "Europe/Berlin" }).format(new Date()));
+  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
+
+function today() {
+  return new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(new Date());
 }

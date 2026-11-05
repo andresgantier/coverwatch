@@ -32,7 +32,7 @@ export function NavLinks({ role, onNavigate }: { role: Role; onNavigate?: () => 
     <nav className="space-y-5">
       {navFor(role).map((group) => (
         <div key={group.label} className="space-y-1">
-          <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.label}</p>
+          <p className="px-3 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">{group.label}</p>
           {group.items.map((item) => {
             const Icon = ICONS[item.href] ?? FileText;
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -64,7 +64,7 @@ export function NavSkeleton() {
   return (
     <div className="space-y-3 px-3" aria-hidden>
       {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="h-7 animate-pulse rounded-md bg-muted" />
+        <div key={i} className="h-7 animate-pulse rounded-md bg-sidebar-accent/50" />
       ))}
     </div>
   );

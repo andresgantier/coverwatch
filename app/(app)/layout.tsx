@@ -10,9 +10,9 @@ import { AccountMenu, MobileMenu, SidebarNav } from "@/components/app-shell/shel
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-svh">
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
-        <Link href="/" className="flex h-14 items-center border-b px-4">
-          <Logo />
+      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+        <Link href="/" className="flex h-14 items-center border-b border-sidebar-border px-4">
+          <Logo onDark />
         </Link>
         <div className="flex-1 overflow-y-auto p-3">
           <Suspense fallback={<NavSkeleton />}>
