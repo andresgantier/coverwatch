@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "node scripts/seed.mjs",
-    "db:types": "supabase gen types --linked --lang typescript --schema public > lib/database.types.ts"
+    "db:types": "supabase gen types --linked --lang typescript --schema public > lib/database.types.ts",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -37,6 +38,7 @@
     "bcryptjs": "^3.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "playwright-core": "^1.64.1",
     "supabase": "^2.122.0",
     "tailwindcss": "^4",
     "typescript": "^5"

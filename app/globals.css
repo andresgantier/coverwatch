@@ -49,72 +49,72 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #f6f9f9;
+  --foreground: #0f1d1c;
+  --card: #ffffff;
+  --card-foreground: #0f1d1c;
+  --popover: #ffffff;
+  --popover-foreground: #0f1d1c;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #e6f6f3;
+  --secondary-foreground: #115e59;
+  --muted: #eef3f2;
+  --muted-foreground: #5b6b69;
+  --accent: #e6f6f3;
+  --accent-foreground: #134e4a;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: #dde7e5;
+  --input: #d3dfdd;
+  --ring: #14b8a6;
+  --chart-1: #0d9488;
+  --chart-2: #14b8a6;
+  --chart-3: #5eead4;
+  --chart-4: #115e59;
+  --chart-5: #134e4a;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f2f2d;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ccfbf1;
+  --sidebar-accent-foreground: #134e4a;
+  --sidebar-border: #dde7e5;
+  --sidebar-ring: #14b8a6;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #0b1514;
+  --foreground: #e8f2f1;
+  --card: #12201f;
+  --card-foreground: #e8f2f1;
+  --popover: #12201f;
+  --popover-foreground: #e8f2f1;
+  --primary: #2dd4bf;
+  --primary-foreground: #042f2e;
+  --secondary: #16302e;
+  --secondary-foreground: #ccfbf1;
+  --muted: #16302e;
+  --muted-foreground: #9fb5b2;
+  --accent: #16302e;
+  --accent-foreground: #ccfbf1;
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: #2dd4bf;
+  --chart-1: #2dd4bf;
+  --chart-2: #5eead4;
+  --chart-3: #14b8a6;
+  --chart-4: #99f6e4;
+  --chart-5: #0d9488;
+  --sidebar: #0f1c1b;
+  --sidebar-foreground: #e8f2f1;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #042f2e;
+  --sidebar-accent: #134e4a;
+  --sidebar-accent-foreground: #ccfbf1;
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: #2dd4bf;
 }
 
 @layer base {
@@ -128,15 +128,15 @@
     @apply font-sans;
   }
 }
-/* Chart tokens (one series; validated: contrast >= 3:1 on the card surface in both modes) */
+/* Chart tokens (one teal series; contrast >= 3:1 on the card surface in both modes) */
 :root {
-  --viz-series-1: #2a78d6;
-  --viz-grid: #e1e0d9;
-  --viz-axis: #c3c2b7;
+  --viz-series-1: #0d9488;
+  --viz-grid: #e3ebe9;
+  --viz-axis: #c4d2cf;
   --viz-muted: #898781;
 }
 .dark {
-  --viz-series-1: #3987e5;
+  --viz-series-1: #2dd4bf;
   --viz-grid: #2c2c2a;
   --viz-axis: #383835;
   --viz-muted: #898781;
